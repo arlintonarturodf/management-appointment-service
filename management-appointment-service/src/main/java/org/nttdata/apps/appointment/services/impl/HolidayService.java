@@ -1,0 +1,50 @@
+package org.nttdata.apps.appointment.services.impl;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.Convert;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.nttdata.apps.appointment.client.HolidaysPeru;
+import org.nttdata.apps.appointment.client.dto.HolidaysResponse;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@ApplicationScoped
+public class HolidayService {
+
+
+    private final int YEAR =2026;
+    private final String COUNTRY="PE";
+
+    @Inject
+    @RestClient
+    HolidaysPeru holidaysPeru;
+
+    public List<HolidaysResponse> getHolidaysFromPeru(){
+        return  this.holidaysPeru.holidaysFromPeru(YEAR,COUNTRY);
+    }
+
+    public boolean existDateValidInHolidaysFromPeru(LocalDateTime localDateTime){
+        //convertir a string
+        String dateToString = localDateTime.toString();
+        //separar por espacio ' ' y dividir fecha y hora
+        String[] dateAndHours  =  dateToString.split(" ");
+        //guardar la fecha aparte y la hora aparte
+        String date=dateAndHours[0];
+        String hours = dateAndHours[1];
+        //llevar la fecha a este formato ejemplo: 2026-01-01
+        String[] dateArr= date.split("/");
+        String day = dateArr[0];
+        String month = dateArr[1];
+        String year = dateArr[2];
+
+        String newDate = year+"-"+month+"-"+day;
+        //llamar al servicio de holidays para buscar si esa fecha es dia no laborable
+
+       List<HolidaysResponse> arrayWithDatesHolidays = this.getHolidaysFromPeru();
+
+      return arrayWithDatesHolidays.stream().anyMatch(hol -> hol.date().equals(newDate));
+
+    }
+}

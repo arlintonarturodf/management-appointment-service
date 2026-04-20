@@ -1,0 +1,34 @@
+quarkus:
+  #Nombre de la aplicacion
+  application:
+    name: appointment-service
+
+  #Configuracion del servidor
+  http:
+    port: 8081
+    root-path: /api/v1/
+
+  #Configuracion de base de datos
+  datasource:
+    username: postgres
+    password: 123456789
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/db_appointment
+  hibernate-orm:
+    database:
+      generation: update
+    log:
+      sql: true
+      format-sql: true
+      bind-parameters: true
+
+  #Configuracion del tópico sincronizado
+  rest-client:
+    holidays-api:
+      url: https://date.nager.at
+      scope: jakarta.inject.Singleton
+      tls-configuration-name: insecure
+  tls:
+    insecure:
+      trust-all: true
+      hostname-verification-algorithm: NONE
