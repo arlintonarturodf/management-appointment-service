@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.nttdata.apps.appointment.entity.enums.AppointmentStatus;
 
 import java.time.LocalDateTime;
@@ -30,7 +31,7 @@ public class Appointment {
     private UUID doctorId;
 
     @Column(nullable = false)
-    private Long scheduleId;
+    private UUID scheduleId;
 
     @Column(nullable = false)
     private LocalDateTime appointmentDateTime;
@@ -42,7 +43,8 @@ public class Appointment {
     @Column(length = 255)
     private String reason;
 
-    @Column(nullable = false)
+    @Column(nullable = false,updatable=false)
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
 

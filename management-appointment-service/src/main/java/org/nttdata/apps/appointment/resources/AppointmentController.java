@@ -4,7 +4,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
-import org.nttdata.apps.appointment.entity.Appointment;
+
 import org.nttdata.apps.appointment.mapper.AppointmentMapper;
 import org.nttdata.apps.appointment.resources.dto.AppointmentRequest;
 import org.nttdata.apps.appointment.resources.dto.AppointmentResponse;
@@ -40,17 +40,21 @@ public class AppointmentController {
     @POST
     @Path("/create")
     public Response create(@Valid AppointmentRequest appointmentRequest){
-     Appointment appointment =
-             this.appointmentService.createAppointment(this.appointmentMapper.toEntity(appointmentRequest));
+     AppointmentResponse appointmentResponse =
+             this.appointmentService.createAppointment(appointmentRequest);
       return   Response.status(Response.Status.CREATED)
-              .entity(appointment)
+              .entity(appointmentResponse)
               .build();
     }
 
     @PATCH
-    @Path("/update")
+    @Path("/update/{id}")
     public Response update(@PathParam("id") UUID id,@Valid AppointmentRequest appointmentRequest){
-
+        AppointmentResponse appointmentResponse =
+                this.appointmentService.updatedAppointment(id,appointmentRequest);
+        return Response.status(Response.Status.CREATED)
+                .entity(appointmentResponse)
+                .build();
     }
 
 

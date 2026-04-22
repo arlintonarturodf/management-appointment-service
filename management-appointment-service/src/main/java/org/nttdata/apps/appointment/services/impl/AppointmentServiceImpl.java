@@ -45,19 +45,25 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
+    @Transactional
     public AppointmentResponse createAppointment(AppointmentRequest appointmentRequest) {
         log.info("Validando fecha de registro para cita: {}",appointmentRequest.appointmentDateTime());
 
         //verificar en mi servicio de holidays si la fecha ingresada existe en dias no laborables
         if ( this.holidayService.existDateValidInHolidaysFromPeru(appointmentRequest.appointmentDateTime())){
-            throw new BussinesException("La fecha ingresada no es válida, es día laborable.");
+            throw new BussinesException("La fecha ingresada no es valida, es dia laborable.");
         }
+
         log.info("Agregando nueva cita a base de datos: {} ",appointmentRequest.patientId());
-
         Appointment appointmentNew = this.appointmentMapper.toEntity(appointmentRequest);
-        this.appointmentRepository.persist(appointmentNew);
+        try {
+            this.appointmentRepository.persist(appointmentNew);
+            log.info("Cita agregada correctamente a base de datos: {}",appointmentNew);
 
-        log.info("Cita agregada correctamente a base de datos: {}",appointmentNew);
+        }catch (Exception e){
+            log.error("Error al guardar en base de datos",e);
+        }
+
         return this.appointmentMapper.toResponse(appointmentNew);
     }
 
@@ -72,14 +78,23 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new BussinesException("La cita no existe en la base de datos.");
 
         }
+        log.info("Validando nueva fecha: {}",appointmentRequest.appointmentDateTime());
+
         log.info("Actualizando cita {}",appointmentRequest.patientId());
 
-        Appointment appointment = this.appointmentMapper.toEntity(appointmentRequest);
-        this.appointmentRepository.persist(appointment);
+      //asignar nuevos valores
+        appointmentFind.setAppointmentDateTime(appointmentRequest.appointmentDateTime());
+        appointmentFind.setReason(appointmentRequest.reason());
+        appointmentFind.setStatus(appointmentRequest.status());
+        appointmentFind.setDoctorId(appointmentRequest.doctorId());
+        appointmentFind.setPatientId(appointmentRequest.patientId());
+        appointmentFind.setScheduleId(appointmentRequest.scheduleId());
 
-        log.info("Cita: {} actualizada correctamente ",appointment);
+        this.appointmentRepository.persist(appointmentFind);
 
-        return  this.appointmentMapper.toResponse(appointment);
+        log.info("Cita: {} actualizada correctamente ",appointmentFind);
+
+        return  this.appointmentMapper.toResponse(appointmentFind);
     }
 
 
@@ -88,7 +103,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     public boolean deleteAppointment(UUID uuid) {
         if (this.appointmentRepository.deleteById(uuid)){
             return true;
-        };
+        }
         return false;
     }
 

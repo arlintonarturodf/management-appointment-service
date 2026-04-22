@@ -3,6 +3,7 @@ package org.nttdata.apps.appointment.services.impl;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.Convert;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.nttdata.apps.appointment.client.HolidaysPeru;
 import org.nttdata.apps.appointment.client.dto.HolidaysResponse;
@@ -10,6 +11,7 @@ import org.nttdata.apps.appointment.client.dto.HolidaysResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @ApplicationScoped
 public class HolidayService {
 
@@ -22,6 +24,7 @@ public class HolidayService {
     HolidaysPeru holidaysPeru;
 
     public List<HolidaysResponse> getHolidaysFromPeru(){
+        log.info("Listando dias laborables en Perú: ");
         return  this.holidaysPeru.holidaysFromPeru(YEAR,COUNTRY);
     }
 
@@ -29,22 +32,17 @@ public class HolidayService {
         //convertir a string
         String dateToString = localDateTime.toString();
         //separar por espacio ' ' y dividir fecha y hora
-        String[] dateAndHours  =  dateToString.split(" ");
+        String[] dateAndHours  =  dateToString.split("T");
         //guardar la fecha aparte y la hora aparte
         String date=dateAndHours[0];
         String hours = dateAndHours[1];
-        //llevar la fecha a este formato ejemplo: 2026-01-01
-        String[] dateArr= date.split("/");
-        String day = dateArr[0];
-        String month = dateArr[1];
-        String year = dateArr[2];
+        //obtienes este formato: 2026-01-01
 
-        String newDate = year+"-"+month+"-"+day;
         //llamar al servicio de holidays para buscar si esa fecha es dia no laborable
 
        List<HolidaysResponse> arrayWithDatesHolidays = this.getHolidaysFromPeru();
 
-      return arrayWithDatesHolidays.stream().anyMatch(hol -> hol.date().equals(newDate));
+      return arrayWithDatesHolidays.stream().anyMatch(hol -> hol.date().equals(date));
 
     }
 }

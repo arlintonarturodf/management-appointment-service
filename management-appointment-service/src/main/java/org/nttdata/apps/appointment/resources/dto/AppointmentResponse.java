@@ -11,7 +11,7 @@ public record AppointmentResponse(
         UUID id,
         UUID patientId,
         UUID doctorId,
-        Long scheduleId,
+        UUID scheduleId,
         LocalDateTime appointmentDateTime,
         AppointmentStatus status,
         String reason,

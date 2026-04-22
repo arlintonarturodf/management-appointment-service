@@ -12,16 +12,14 @@ import java.util.UUID;
 @Builder
 public record AppointmentRequest(
 
-        @NotBlank(message = "El campo de PatientId es obligatorio.")
+
         UUID patientId,
 
-        @NotBlank(message = "El campo de DoctorId es obligatorio.")
         UUID doctorId,
 
-        @NotBlank(message = "El campo de ScheduleId es obligatorio.")
-        Long scheduleId,
+        UUID scheduleId,
 
-        @NotBlank(message = "La fecha de la cita es obligatoria.")
+
         @Future(message = "La fecha de cita debe ser válida.")
         LocalDateTime appointmentDateTime,
 
