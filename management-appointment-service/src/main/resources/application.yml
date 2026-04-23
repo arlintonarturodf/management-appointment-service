@@ -5,15 +5,29 @@ quarkus:
 
   #Configuracion del servidor
   http:
-    port: 8081
+    port: 8080
     root-path: /api/v1/
-
+  # Configuracion para conexion a base de datos
+    # Configuracion para DevServices, que permite levantar un contenedor de postgres para desarrollo
+  devservices:
+    postgresql:
+      enabled: false
+      image-name: postgres:16-alpine
+      container-name: management-appointment-postgres
+      volumes:
+        - ./data:/var/lib/postgresql/data
+      port: 5432
+      container-env:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: 123456789
+        POSTGRES_DB: "db_appointment"
   #Configuracion de base de datos
   datasource:
     username: postgres
     password: 123456789
-    jdbc:
-      url: jdbc:postgresql://localhost:5432/db_appointment
+    #jdbc:
+      #url: jdbc:postgresql://localhost:5432/db_appointment
+      #driver: org.postgresql.Driver
   hibernate-orm:
     database:
       generation: update
