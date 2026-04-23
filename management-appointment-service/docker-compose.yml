@@ -1,0 +1,11 @@
+services:
+  # Base de Datos
+  postgres:
+    image: postgres:16-alpine
+    container_name: db_appointment
+    environment:
+      POSTGRES_DB: db_appointment
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+    ports:
+      - "5432:5432"

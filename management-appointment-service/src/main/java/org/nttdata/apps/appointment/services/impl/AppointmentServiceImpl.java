@@ -100,10 +100,14 @@ public class AppointmentServiceImpl implements AppointmentService {
 
 
     @Override
+    @Transactional
     public boolean deleteAppointment(UUID uuid) {
+        log.info("Buscando cita {}",uuid);
         if (this.appointmentRepository.deleteById(uuid)){
+            log.info("Cita: {} eliminada correctamente ",uuid);
             return true;
         }
+        log.warn("Cita: {} no existe en la base de datos ",uuid);
         return false;
     }
 

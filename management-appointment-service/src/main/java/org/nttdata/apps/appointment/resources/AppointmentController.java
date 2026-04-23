@@ -57,5 +57,14 @@ public class AppointmentController {
                 .build();
     }
 
+    @Path("/delete/{id}")
+    @DELETE
+    public Response delete(@PathParam("id") UUID id) {
+        if (this.appointmentService.deleteAppointment(id)) {
+            return Response.ok().build();
+        }else{
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
 
+    }
 }
