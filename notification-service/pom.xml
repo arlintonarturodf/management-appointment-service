@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.nttdata.apps</groupId>
-    <artifactId>management-appointment-service</artifactId>
+    <artifactId>notification-service</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>quarkus</packaging>
 
@@ -13,11 +13,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.34.3</quarkus.platform.version>
+        <quarkus.platform.version>3.34.6</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
 
-        <!-- ▼ NUEVO: versión de Confluent (alineada con Kafka 3.x) -->
         <confluent.version>7.2.0</confluent.version>
     </properties>
 
@@ -34,18 +33,27 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- ── REST ──────────────────────────────────────────────── -->
+        <!-- ── REST (para healthcheck y endpoints de consulta) ── -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-client-jackson</artifactId>
+            <artifactId>quarkus-kafka-client</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-confluent-registry-avro</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -53,27 +61,28 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc</artifactId>
+            <artifactId>quarkus-mailer</artifactId>
         </dependency>
-        <!-- ── Persistencia ──────────────────────────────────────── -->
-
-        <!-- Hibernate ORM specific dependencies -->
+        <!-- ── Persistencia (órdenes de pago) ── -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-panache</artifactId>
         </dependency>
-
-        <!-- JDBC driver dependencies -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jdbc-postgresql</artifactId>
-        </dependency>
-        <!--Validar campos antes de ingresar  -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>
         </dependency>
-        <!-- ── KAFKA + AVRO (NUEVO) ──────────────────────────────── -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jdbc-postgresql</artifactId>
+        </dependency>
+
+        <!-- ── Email (Quarkus Mailer) ── -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
+        <!-- ── Kafka + Avro ── -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kafka-client</artifactId>
@@ -82,18 +91,15 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
         </dependency>
-        <!-- Soporte Confluent Schema Registry + Avro en Quarkus -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-confluent-registry-avro</artifactId>
         </dependency>
-        <!-- Serializador/Deserializador Avro de Confluent -->
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
             <version>${confluent.version}</version>
             <exclusions>
-                <!-- Evita conflicto con la API JAX-RS de Quarkus -->
                 <exclusion>
                     <groupId>jakarta.ws.rs</groupId>
                     <artifactId>jakarta.ws.rs-api</artifactId>
@@ -101,8 +107,7 @@
             </exclusions>
         </dependency>
 
-        <!-- ── Utilidades ────────────────────────────────────────── -->
-        <!-- Lombok para generar codigo(getters setters) mas rapido -->
+        <!-- ── Utilidades ── -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -110,12 +115,14 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- ── Test ──────────────────────────────────────────────── -->
+
+        <!-- ── Test ── -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
@@ -123,14 +130,11 @@
         </dependency>
     </dependencies>
 
-    <!-- ── Repositorio Confluent (obligatorio para kafka-avro-serializer) ── -->
     <repositories>
         <repository>
             <id>confluent</id>
             <url>https://packages.confluent.io/maven/</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
+            <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
 
@@ -144,11 +148,9 @@
                 <executions>
                     <execution>
                         <goals>
-                            <!-- generate-code genera las clases Java desde el .avsc -->
                             <goal>build</goal>
                             <goal>generate-code</goal>
                             <goal>generate-code-tests</goal>
-                            <goal>native-image-agent</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -158,7 +160,6 @@
                 <version>${compiler-plugin.version}</version>
                 <configuration>
                     <parameters>true</parameters>
-                    <!-- Agregar para que funcione LOMBOOK-->
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

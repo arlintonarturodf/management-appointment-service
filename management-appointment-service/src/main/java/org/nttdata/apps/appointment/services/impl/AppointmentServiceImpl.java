@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.nttdata.apps.appointment.config.producer.AppointmentEventProducer;
 import org.nttdata.apps.appointment.entity.Appointment;
 import org.nttdata.apps.appointment.exception.BussinesException;
 import org.nttdata.apps.appointment.mapper.AppointmentMapper;
@@ -12,6 +13,8 @@ import org.nttdata.apps.appointment.repository.AppointmentRepository;
 import org.nttdata.apps.appointment.resources.dto.AppointmentRequest;
 import org.nttdata.apps.appointment.resources.dto.AppointmentResponse;
 import org.nttdata.apps.appointment.services.AppointmentService;
+
+import org.nttdata.apps.appointment.avro.AppointmentEvent;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +32,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Inject
     private HolidayService holidayService;
 
-
+    @Inject
+    private AppointmentEventProducer appointmentEventProducer;
 
     @Override
     public AppointmentResponse getAppointmentById(UUID uuid) {
@@ -62,8 +66,11 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         }catch (Exception e){
             log.error("Error al guardar en base de datos",e);
+            throw new BussinesException("Error al guardar en base de datos");
         }
 
+        // Publicar evento Kafka
+        sendKafkaEvent(appointmentNew, "APPOINTMENT_CREATED");
         return this.appointmentMapper.toResponse(appointmentNew);
     }
 
@@ -94,6 +101,9 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         log.info("Cita: {} actualizada correctamente ",appointmentFind);
 
+        // Publicar evento Kafka
+        sendKafkaEvent(appointmentFind, "APPOINTMENT_UPDATED");
+
         return  this.appointmentMapper.toResponse(appointmentFind);
     }
 
@@ -102,14 +112,50 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     @Transactional
     public boolean deleteAppointment(UUID uuid) {
-        log.info("Buscando cita {}",uuid);
-        if (this.appointmentRepository.deleteById(uuid)){
-            log.info("Cita: {} eliminada correctamente ",uuid);
+        log.info("Buscando cita {}", uuid);
+        Appointment appointmentFind = this.appointmentRepository.findById(uuid);
+
+        if (appointmentFind == null) {
+            log.warn("Cita: {} no existe en la base de datos", uuid);
+            return false;
+        }
+
+        // Publicar evento ANTES de eliminar (para tener los datos del evento)
+        sendKafkaEvent(appointmentFind, "APPOINTMENT_DELETED");
+
+        if (this.appointmentRepository.deleteById(uuid)) {
+            log.info("Cita: {} eliminada correctamente", uuid);
             return true;
         }
-        log.warn("Cita: {} no existe en la base de datos ",uuid);
+
         return false;
     }
 
 
+    // Helper: construye el AppointmentEvent Avro y lo envía a Kafka
+    private void sendKafkaEvent(Appointment appointment, String eventType) {
+        try {
+            log.info("Enviando evento Kafka [{}] para cita: {}", eventType, appointment.getId());
+
+            AppointmentEvent event = AppointmentEvent.newBuilder()
+                    .setId(appointment.getId().toString())
+                    .setPatientId(appointment.getPatientId().toString())
+                    .setDoctorId(appointment.getDoctorId().toString())
+                    .setScheduleId(appointment.getScheduleId().toString())
+                    .setAppointmentDateTime(appointment.getAppointmentDateTime().toString())
+                    .setStatus(appointment.getStatus().name())
+                    .setReason(appointment.getReason())
+                    .setCreatedAt(appointment.getCreatedAt() != null
+                            ? appointment.getCreatedAt().toString() : "")
+                    .setEventType(eventType)
+                    .build();
+
+            appointmentEventProducer.sendAppointmentEvent(event);
+            log.info("Evento [{}] enviado correctamente", eventType);
+
+        } catch (Exception e) {
+            // No se lanza excepción para no revertir la transacción DB por un fallo de Kafka
+            log.error("Error técnico al publicar evento Kafka [{}]: {}", eventType, e.getMessage());
+        }
+    }
 }

@@ -32,3 +32,20 @@ quarkus:
     insecure:
       trust-all: true
       hostname-verification-algorithm: NONE
+
+  # Desactivar DevServices (usamos Docker Compose propio)
+  devservices:
+    enabled: false
+
+# ── Configuración Kafka (leídas con @ConfigProperty en KafkaProducerProvider) ──
+kafka:
+  bootstrap:
+    servers: localhost:9092
+  schema:
+    registry:
+      url: http://localhost:8081
+
+# ── Configuración del tópico ──────────────────────────────────────────────────
+appointment:
+  kafka:
+    topic-name: appointment-events
