@@ -1,5 +1,6 @@
 services:
-  # Base de Datos
+
+  # ── 1. DB appointment (original) ─────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: db_appointment
@@ -9,3 +10,88 @@ services:
       POSTGRES_PASSWORD: 123456789
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db_appointment"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── 2. DB notification (NUEVO) ────────────────────────────────────────────────
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: db_notification
+    environment:
+      POSTGRES_DB: db_notification
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db_notification"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── 3. Zookeeper ──────────────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: appointment-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # ── 4. Kafka Broker ───────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: appointment-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # ── 5. Schema Registry ────────────────────────────────────────────────────────
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: appointment-schema-registry
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  # ── 6. Crear tópicos ──────────────────────────────────────────────────────────
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: appointment-kafka-setup
+    depends_on:
+      - kafka
+    entrypoint: ["bash", "-c",
+      "sleep 10 &&
+       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic appointment-events --partitions 3 --replication-factor 1 &&
+       kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic appointment-events.DLT --partitions 1 --replication-factor 1"
+    ]
+
+  # ── 7. Control Center (UI) ────────────────────────────────────────────────────
+  control-center:
+    image: confluentinc/cp-enterprise-control-center:7.5.0
+    container_name: appointment-control-center
+    depends_on:
+      - kafka
+      - schema-registry
+    ports:
+      - "9021:9021"
+    environment:
+      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'kafka:29092'
+      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONTROL_CENTER_REPLICATION_FACTOR: 1
+      PORT: 9021

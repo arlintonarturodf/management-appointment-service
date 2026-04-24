@@ -1,76 +1,192 @@
-# management-appointment-service
+# Management Appointment Service
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+**Servicio de Gestión de Citas Médicas** construido con Quarkus, PostgreSQL, Kafka y Avro. Una aplicación empresarial de alta performance para la administración integral de citas médicas con eventos en tiempo real.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
-## Running the application in dev mode
+---
 
-You can run your application in dev mode that enables live coding using:
+## 📚 Tabla de Contenidos
 
-```shell script
+- [Descripción General](#descripción-general)
+- [Tecnologías](#tecnologías)
+- [Ejecución](#ejecución)
+- [Endpoints API](#endpoints-api)
+- [Modelos de Datos](#modelos-de-datos)
+
+---
+
+## 🎯 Descripción General
+
+**Management Appointment Service** es un microservicio especializado en la gestión de citas médicas que ofrece:
+
+✅ CRUD completo de citas médicas  
+✅ Validación de feriados contra API externa (Nager.at)  
+✅ Event Sourcing mediante Kafka + Avro  
+✅ Persistencia relacional con Hibernate ORM + PostgreSQL  
+✅ Arquitectura orientada a eventos  
+✅ Microsegundos de latencia gracias a Quarkus  
+
+---
+
+## 🛠 Tecnologías
+
+| Componente | Versión |
+|-----------|---------|
+| **Quarkus** | 3.34.3 |
+| **Java** | 25 |
+| **PostgreSQL** | 16-Alpine |
+| **Kafka** | 7.5.0 |
+| **Avro** | 7.2.0 |
+
+---
+
+## 📋 Ejecución Rápida
+
+### Modo Desarrollo
+
+```bash
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+**Acceso:**
+- API: `http://localhost:8080/api/v1/`
+- Dev UI: `http://localhost:8080/q/dev/`
 
-## Packaging and running the application
+### Modo Producción
 
-The application can be packaged using:
-
-```shell script
+```bash
 ./mvnw package
+java -jar target/quarkus-app/quarkus-run.jar
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+---
 
-If you want to build an _über-jar_, execute the following command:
+## 🔌 Endpoints API
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+### Base URL: `http://localhost:8080/api/v1`
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/appointments` | Obtener todas las citas |
+| GET | `/appointments/{id}` | Obtener cita por ID |
+| POST | `/appointments/create` | Crear nueva cita |
+| PATCH | `/appointments/update/{id}` | Actualizar cita |
+| DELETE | `/appointments/delete/{id}` | Eliminar cita |
+| GET | `/holidays` | Obtener feriados de Perú |
+
+### Crear Cita
+
+```bash
+curl -X POST http://localhost:8080/api/v1/appointments/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "patientId": "550e8400-e29b-41d4-a716-446655440001",
+    "doctorId": "550e8400-e29b-41d4-a716-446655440002",
+    "scheduleId": "550e8400-e29b-41d4-a716-446655440003",
+    "appointmentDateTime": "2026-05-20T14:00:00",
+    "status": "CREATED",
+    "reason": "Consulta"
+  }'
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+---
 
-## Creating a native executable
+## 💾 Modelos de Datos
 
-You can create a native executable using:
+### Entidad: Appointment
 
-```shell script
-./mvnw package -Dnative
+```java
+@Entity
+@Table(name = "tb_appointment")
+public class Appointment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+    private UUID patientId;
+    private UUID doctorId;
+    private UUID scheduleId;
+    private LocalDateTime appointmentDateTime;
+    private AppointmentStatus status;    // CREATED, CONFIRMED, CANCELLED
+    private String reason;
+    private LocalDateTime createdAt;
+}
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+### Estados
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+```
+CREATED    → Recién creada
+CONFIRMED  → Confirmada
+CANCELLED  → Cancelada
 ```
 
-You can then execute your native executable with: `./target/management-appointment-service-1.0.0-SNAPSHOT-runner`
+---
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+## ⚙️ Configuración
 
-## Related Guides
+### application.yml
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-- YAML Configuration ([guide](https://quarkus.io/guides/config-yaml)): Use YAML to configure your Quarkus application
+```yaml
+quarkus:
+  application:
+    name: appointment-service
+  http:
+    port: 8080
+    root-path: /api/v1/
+  datasource:
+    username: postgres
+    password: 123456789
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/db_appointment
 
-## Provided Code
+kafka:
+  bootstrap:
+    servers: localhost:9092
+  schema:
+    registry:
+      url: http://localhost:8081
 
-### YAML Config
+appointment:
+  kafka:
+    topic-name: appointment-events
+```
 
-Configure your application with YAML
+---
 
-[Related guide section...](https://quarkus.io/guides/config-reference#configuration-examples)
+## 📊 Infraestructura
 
-The Quarkus application configuration is located in `src/main/resources/application.yml`.
+### Docker Compose
 
-### REST
+```bash
+docker-compose up -d
+```
 
-Easily start your REST Web Services
+**Servicios:**
+- PostgreSQL: `localhost:5432`
+- Kafka: `localhost:9092`
+- Schema Registry: `localhost:8081`
+- Control Center: `localhost:9021`
 
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+---
+
+## 📡 Eventos Kafka
+
+**Tópicos:**
+- `appointment-events` - Eventos de citas (3 particiones)
+- `appointment-events.DLT` - Dead Letter Topic
+
+**Eventos:**
+- `APPOINTMENT_CREATED`
+- `APPOINTMENT_UPDATED`
+- `APPOINTMENT_DELETED`
+
+---
+
+## ✅ Validaciones
+
+- ✓ Fecha debe ser futura
+- ✓ NO puede ser feriado de Perú
+- ✓ Campos requeridos: patientId, doctorId, scheduleId, appointmentDateTime, status
+
+---
