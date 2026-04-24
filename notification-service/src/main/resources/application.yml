@@ -1,0 +1,49 @@
+quarkus:
+  application:
+    name: notification-service
+
+  http:
+    port: 8090
+    root-path: /api/v1/
+
+  # Base de datos propia del notification-service
+  datasource:
+    username: postgres
+    password: 123456789
+    jdbc:
+      url: jdbc:postgresql://localhost:5433/db_notification
+      driver: org.postgresql.Driver
+
+  hibernate-orm:
+    database:
+      generation: update
+    log:
+      sql: true
+      format-sql: true
+
+  # Mailer (configura con tu SMTP real o usa MailHog para dev)
+  mailer:
+    host: localhost
+    port: 1025
+    start-tls: DISABLED
+    login: DISABLED
+    from: "no-reply@appointments.com"
+    mock: false   # Cambiar a true en dev para no enviar emails reales
+
+  devservices:
+    enabled: false
+
+# ── Kafka Consumer ────────────────────────────────────────────────────────────
+kafka:
+  bootstrap:
+    servers: localhost:9092
+  schema:
+    registry:
+      url: http://localhost:8081
+  consumer:
+    group-id: notification-group
+    topic: appointment-events
+    # Cuántos mensajes procesar por poll
+    max-poll-records: 10
+    # Dead Letter Queue
+    dlt-topic: appointment-events.DLT

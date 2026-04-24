@@ -1,0 +1,16 @@
+{
+  "namespace": "org.nttdata.apps.appointment.avro",
+  "type": "record",
+  "name": "AppointmentEvent",
+  "fields": [
+    { "name": "id",                  "type": "string" },
+    { "name": "patientId",           "type": "string" },
+    { "name": "doctorId",            "type": "string" },
+    { "name": "scheduleId",          "type": "string" },
+    { "name": "appointmentDateTime", "type": "string" },
+    { "name": "status",              "type": "string" },
+    { "name": "reason",              "type": ["null", "string"], "default": null },
+    { "name": "createdAt",           "type": "string" },
+    { "name": "eventType",           "type": "string" }
+  ]
+}
